@@ -76,7 +76,7 @@ public:
     void loadProgram(const std::vector<uint8_t>& program, uint16_t startAddress);
     void loadProgram(const uint8_t* program, size_t size, uint16_t startAddress);
     uint8_t readMemory(uint16_t addr)const {return memory[addr];}
-    void writeMemory*uint16_t addr, uint8_t value) {memory[addr]=value; }
+    void writeMemory(uint16_t addr, uint8_t value) {memory[addr]=value; }
 
     void step(); //для одной инструкции.
     void run(); //делать до HLT.
