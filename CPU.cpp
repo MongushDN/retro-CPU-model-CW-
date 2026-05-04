@@ -105,3 +105,34 @@ void CPU::aluCMP(uint8_t a, uint8_t b){
     flagP=(calculateParity((uint8_t)(result&0xFF))==1);
 }
 
+void push(uint8_t val);
+    uint8_t pop();
+    uint8_t push16(uint16_t val); //16 бит значение для PC.
+    uint16_t pop16();
+
+
+    void updateFlags(uint8_t res, bool carryOut=false);
+    uint8_t calculateParity(uint8_t val);
+public:
+    CPU();
+    void reset();
+    bool isRunning() const{return running;}
+//памятью.
+    void loadProgram(const std::vector<uint8_t>& program, uint16_t startAddress);
+    void loadProgram(const uint8_t* program, size_t size, uint16_t startAddress);
+    uint8_t readMemory(uint16_t addr)const {return memory[addr];}
+    void writeMemory(uint16_t addr, uint8_t value) {memory[addr]=value; }
+
+    void step(); //для одной инструкции.
+    void run(); //делать до HLT.
+    void printState() const;
+    void printInstruction(uint8_t code, uint8_t operand) const;
+
+    uint8_t getA() const{return A;}
+    uint16_t getPC() const{ return PC;}
+    uint8_t getSP() const{ return SP;}
+    bool getFlagZ() const{ return flagZ;}
+    bool getflagC() const{ return flagC;}
+    bool getflagP() const{return flagP;}
+    bool getflagS() const{ return flagS;}
+    uint8_t getR(int index) const {return (index<4)?R[index]:0;}
