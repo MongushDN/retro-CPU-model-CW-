@@ -17,7 +17,7 @@
 #define ADD_R 0x10   //ADD R(регистр): A=A+R.
 #define SUB_R 0x11  //SUB R: A-=R.
 #define INC_R 0x12   //INC R: ++R. 
-#define DEX_R 0x13   //DEX R: --R. (инкремент декремент регистра)
+#define DEC_R 0x13   //DEC R: --R. (инкремент декремент регистра)
 #define AND_R 0x14   //AND R: A=A&R
 #define OR_R 0x15   //OR R: A=A||R.
 #define XOR_R 0x16   //XOR R: A=A^R.
