@@ -2,16 +2,15 @@
 #define CPU_H
 
 #include <vector>
-#include <string> //?
-#include <cstdint>
+#include <cstdint> //uint всякие.
 
 // коды операций. 
 // Работа с данными:
-#define LDI 0x01     // LDI imm: загрузить константу в А.
-#define MOV_R_A 0x02  // MOV R, A: скопировать А в регистр(R) 0-3
-#define MOV_A_R 0x03  // MOV A, R: скоп регистр в А.
-#define STA 0x04     //STA addr: сохранение А в памяти.
-#define LDA 0x05     //LDA addr: взять А из памяти.
+#define LDI     0x01     // LDI imm: загрузить константу в А.
+#define MOV_R_A 0x02     // MOV R, A: скопировать А в регистр(R) 0-3
+#define MOV_A_R 0x03     // MOV A, R: скоп регистр в А.
+#define STA     0x04     //STA addr: сохранение А в памяти.
+#define LDA     0x05     //LDA addr: взять А из памяти.
 
 // Арифметические и логические операции. наконец-то.
 #define ADD_R 0x10   //ADD R(регистр): A=A+R.
@@ -19,24 +18,24 @@
 #define INC_R 0x12   //INC R: ++R. 
 #define DEC_R 0x13   //DEC R: --R. (инкремент декремент регистра)
 #define AND_R 0x14   //AND R: A=A&R
-#define OR_R 0x15   //OR R: A=A||R.
+#define OR_R  0x15   //OR R: A=A||R.
 #define XOR_R 0x16   //XOR R: A=A^R.
 #define CMP_R 0x17  //CMP R: сравнение А и R. (тут установить флаги)
 
 //Управление потоком/ noooou/(
-#define JMP 0x20     //JMP addr: безусловный перех.(!)
-#define JZ 0x21     //JZ addr: переход при Z=1
-#define JNZ 0x22    //JNZ addr: переход при Z=0
-#define JC 0X23      //JC addr: переход при С=1
-#define JNC 0x24    //JNC addr: переход при С=0.
-#define CALL 0x25    //CALL addr: вызов подпрограммы.
-#define RET 0x26    //RET: возврат из подпрограммы.
-#define HLT 0xFF    //HLT: остановка процессор. :О
+#define JMP     0x20     //JMP addr: безусловный перех.(!)
+#define JZ      0x21     //JZ addr: переход при Z=1
+#define JNZ     0x22    //JNZ addr: переход при Z=0
+#define JC      0X23      //JC addr: переход при С=1
+#define JNC     0x24    //JNC addr: переход при С=0.
+#define CALL    0x25    //CALL addr: вызов подпрограммы.
+#define RET     0x26    //RET: возврат из подпрограммы.
+#define HLT     0xFF    //HLT: остановка процессор. :О
 
 
 class CPU{
 private:
-    uint8_t memory[65536]; //64кб ОЗУ. 
+    std::vector<uint8_t> memory; //64кб ОЗУ. 
     bool running; //true - CPU работает, иначе false.
 
     uint8_t A;   // аккумулятор(8 бит).
@@ -62,11 +61,11 @@ private:
 
     void push(uint8_t val);
     uint8_t pop();
-    uint8_t push16(uint16_t val); //16 бит значение для PC.
+    void push16(uint16_t val); //16 бит значение для PC.
     uint16_t pop16();
 
 
-    void updateFlags(uint8_t res, bool carryOut=false);
+    void updateFlags(uint8_t result, bool carryOut=false);
     uint8_t calculateParity(uint8_t val);
 public:
     CPU();
@@ -81,19 +80,16 @@ public:
     void step(); //для одной инструкции.
     void run(); //делать до HLT.
     void printState() const;
-    void printInstruction(uint8_t code, uint8_t operand) const;
+    void printInstruction(uint8_t OPcode, uint8_t operand) const;
 
     uint8_t getA() const{return A;}
     uint16_t getPC() const{ return PC;}
     uint8_t getSP() const{ return SP;}
     bool getFlagZ() const{ return flagZ;}
     bool getflagC() const{ return flagC;}
-    bool getflagP() const{return flagP;}
+    bool getflagP() const{ return flagP;}
     bool getflagS() const{ return flagS;}
-    uint8_t getR(int index) const {return (index<4)?R[index]:0;}
-
+    uint8_t getR(int index) const {return (index>=0 && index<4)?R[index]:0;}
 };
 
-
-
-#endif CPU_H
+#endif

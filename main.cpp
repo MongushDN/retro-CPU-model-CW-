@@ -1,7 +1,9 @@
+#include "CPU.h"
 #include <iostream>
+#include <iomanip>
+#include <algorithm>
 
-using namespace std;
-int main(){
-    cout<<"there could be smth";
+int main() {
+    std::cout<<"Привет, Арина";
     return 0;
 }

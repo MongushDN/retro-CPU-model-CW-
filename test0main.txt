@@ -1,0 +1,79 @@
+#include "CPU.h"
+#include <iostream>
+#include <iomanip>
+#include <algorithm>
+
+int main() {
+
+    std::cout << "\n ПРИМЕР 1: 5 + 3 = 8 \n";
+    CPU cpu1;
+    uint8_t prog1[] = {
+        LDI, 5,
+        MOV_R_A, 0,
+        LDI, 3,
+        ADD_R, 0,
+        HLT, 0
+    };
+    cpu1.loadProgram(prog1, sizeof(prog1), 0);
+    cpu1.run();
+    std::cout << "Результат: A = " << (int)cpu1.getA() << " (ожидалось 8)\n";
+
+
+    std::cout << "\n ПРИМЕР 2: max(10, 7) \n";
+    CPU cpu2;
+    uint8_t prog2[] = {
+        LDI, 10,
+        MOV_R_A, 0,
+        LDI, 7,
+        MOV_R_A, 1,
+        MOV_A_R, 0,
+        CMP_R, 1,
+        JNC, 0x10,
+        JMP, 0x14,
+        LDI, 1,
+        JMP, 0x16,
+        LDI, 2,
+        HLT, 0
+    };
+    cpu2.loadProgram(prog2, sizeof(prog2), 0);
+    cpu2.run();
+    std::cout << " (1=R0,2=R1): A = " << (int)cpu2.getA() << " (ожидалось 1)\n";
+
+   
+    std::cout << "\n    ПРИМЕР 3: 4 * 3 = 12 \n";
+    CPU cpu3;
+    uint8_t prog3[] = {
+        LDI, 4,
+        MOV_R_A, 0,      // R0 = счётчик
+        LDI, 3,
+        MOV_R_A, 1,      // R1 = множимое
+        LDI, 0,
+        MOV_R_A, 2,      // R2 = результат
+        MOV_R_A, 3,      // R3 = 0 (для сравнения)
+
+        // цикл:
+        MOV_A_R, 0,      // A = R0
+        CMP_R, 3,        // сравнить с 0
+        JZ, 0x24,        // если 0, выход
+
+        MOV_A_R, 1,      // A = R1
+        ADD_R, 2,        // A = R1 + R2
+        MOV_R_A, 2,      // R2 = A
+
+        MOV_A_R, 0,      // A = R0
+        DEC_R, 0,        // R0-- (A и R0)
+        JMP, 0x0E,       // на начало цикла
+
+        HLT, 0,          // заглушки
+        HLT, 0,
+
+        // выход:
+        MOV_A_R, 2,      // A = R2
+        HLT, 0
+    };
+    cpu3.loadProgram(prog3, sizeof(prog3), 0);
+    cpu3.run();
+    std::cout << "Результат: A = " << (int)cpu3.getA() << " (ожидалось 12)\n";
+
+    return 0;
+}

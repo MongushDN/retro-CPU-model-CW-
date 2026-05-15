@@ -2,22 +2,16 @@
 #include <iostream>
 #include <iomanip>
 
-CPU::CPU() : A(0), PC(0), SP(StackStart), running(false),
-    flagZ(false), flagC(false), flagP(false), flagS(false) {
-        
-        for(int i=0; i<65536;++i){
-            memory[i]=0;
-        }
-        for(int i=0; i<4;++i){
-            R[i]=0;
-        }
-}
+CPU::CPU() : memory(65536, 0), running(false), 
+A(0), PC(0), SP(StackStart),
+    flagZ(false), flagC(false), flagP(false), flagS(false) 
+{     for(int i=0; i<4;++i){ R[i]=0; }    }
 
 void CPU::reset(){
     A=0; PC=0; SP=StackStart;
-    flagC=false; flagP=false; flagS=false; flagZ=false;
+    flagC=flagP=flagS=flagZ=false;
     running=true;
-    for(int i=0;i<4;++i){ R[i]=0;}
+    for(int i=0;i<4;++i){ R[i]=0; }
 }
 
 void CPU::loadProgram(const std::vector<uint8_t>& program,
@@ -37,19 +31,19 @@ void CPU::loadProgram(const uint8_t* program, size_t size,
     running=true;
 }
 
-
+//стек.
 void CPU::push(uint8_t value){ memory[SP--]=value; }
 uint8_t CPU::pop(){ return memory[++SP]; }
-uint8_t CPU::push16(uint16_t val){ 
-    push((val>>8)&0xFF); //старший байт.
-    push(val&0xFF);      //младший байт.
+void CPU::push16(uint16_t val){ 
+    push(static_cast<uint8_t>((val>>8)&0xFF)); //старший байт.
+    push(static_cast<uint8_t>(val&0xFF));      //младший байт.
 }
 uint16_t CPU::pop16(){
     uint8_t low=pop();
     uint8_t high=pop();
-    return (high<<8)|low;
+    return (static_cast<uint16_t>(high)<<8)|low;
 }
-
+//флаги.
 uint8_t CPU::calculateParity(uint8_t value){
     uint8_t count=0;
     for(int i=0; i<8;++i){
@@ -60,21 +54,23 @@ uint8_t CPU::calculateParity(uint8_t value){
 
 void CPU::updateFlags(uint8_t result, bool carryOut){
     flagC= carryOut;
-    if (result==0) {flagZ=true;}
-    else{ flagZ=false;}
+    flagZ=(result==0);
     flagP=(calculateParity(result)==1);
-    flagS=((result&0x80)!=0); //старший бит = знак.
+    flagS=(result&0x80)!=0; //старший бит = знак.
 }
 
+//alu.
 uint8_t CPU::aluADD(uint8_t a, uint8_t b){
-    uint16_t result=a+b;
-    updateFlags((uint8_t)(result&0xFF), (result>0xFF));
-    return (uint8_t)(result & 0xFF);
+    uint16_t Res=static_cast<uint16_t>(a)+b;
+    uint8_t result=static_cast<uint8_t>(Res&0xFF);
+    updateFlags(result, Res>0xFF);
+    return result;
 }
 uint8_t CPU::aluSUB(uint8_t a, uint8_t b){
-    uint16_t result = a-b;
-    updateFlags((uint8_t)(result&0xFF),(a<b));
-    return (uint8_t)(result&0xFF);
+    uint16_t Res=static_cast<uint16_t>(a)-b;
+    uint8_t result=static_cast<uint8_t>(Res&0xFF);
+    updateFlags(result,a<b);
+    return result;
 }
 uint8_t CPU::aluAND(uint8_t a, uint8_t b){
     uint8_t result=a&b;
@@ -98,20 +94,20 @@ uint8_t CPU::aluDEC(uint8_t b){
     return aluSUB(b, 1);
 }
 void CPU::aluCMP(uint8_t a, uint8_t b){
-    uint16_t result=a-b;
+    uint8_t result=a-b;
     flagZ=(a==b);   //А не изменится.
     flagC=(a<b);
-    flagS=((result&0xFF)&0x80!=0);
-    flagP=(calculateParity((uint8_t)(result&0xFF))==1);
+    flagS=(result&0x80)!=0;
+    flagP=(calculateParity(result)==1);
 }
 
 
 
 void CPU::step() {
         if(!running) return;
-        uint8_t OPcode = memory[++PC]; //код операции.
-        uint8_t operand = memory[++PC]; //2 байт инструкции.
-        std::cout<<"\n[PC=]"<<std::setw(4)<<(PC-2)<<"] "; //вывод выполняемой ф-ции.
+        uint8_t OPcode = memory[PC++]; //код операции.
+        uint8_t operand = memory[PC++]; //2 байт инструкции.
+        std::cout<<"\n[PC="<<std::setw(4)<<(PC-2)<<"] "; //вывод выполняемой ф-ции.
         printInstruction(OPcode, operand);
         switch ((OPcode))
         {
@@ -125,14 +121,14 @@ void CPU::step() {
                 R[operand]=A;
                 updateFlags(R[operand],false);
                 std::cout<<" ->R "<<(int)operand<<" = "<<(int)A;
-            } else{ std::cout<<" -> Error: wrong register bumber"<<(int)operand; }
+            } else{ std::cout<<" -> Error: wrong register\n"; }
             break;
         case MOV_A_R:
             if(operand<4){
                 A=R[operand];
                 updateFlags(A, false);
                 std::cout<<" -> A = R "<<(int)operand<<" = "<<(int)A;
-            } else{ std::cout<<" -> Error: wrong register bumber"<<(int)operand; }
+            } else{ std::cout<<" -> Error: wrong register\n"; }
             break;
         case STA:
             memory[operand]=A;
@@ -147,65 +143,83 @@ void CPU::step() {
         case ADD_R:
             if(operand<4){
                 A=aluADD(A, R[operand]);
-                std::cout<<" -> A = "<<(int)A<<" (Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<")";
+                std::cout<<" -> A = "<<(int)A<<" (Z = "
+                <<flagZ<<", C = "<<flagC<<", S = "<<flagS
+                <<", P = "<<flagP<<")";
             } else {
-                std::cout<<" -> Error: wrong register bumber"<<(int)operand;
+                std::cout<<" -> Error: wrong register\n";
             }
             break;
         case SUB_R:
             if(operand<4){
                 A=aluSUB(A,R[operand]);
-                std::cout<<" -> A = "<<(int)A<<" (Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<")";
+                std::cout<<" -> A = "<<(int)A<<" (Z = "
+                <<flagZ<<", C = "<<flagC<<", S = "<<flagS
+                <<", P = "<<flagP<<")";
             } else {
-                std::cout<<" -> Error: wrong register bumber"<<(int)operand;
+                std::cout<<" -> Error: wrong register\n";
             }
             break;
         case INC_R:
             if(operand<4){
-                A=aluINC(R[operand]);
-                std::cout<<" -> A = "<<(int)A<<" (Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<")";
+                R[operand]=aluINC(R[operand]);
+                A=R[operand];
+                std::cout<<" -> R = "<<(int)operand<<" (Z = "
+                <<flagZ<<", C = "<<flagC<<", S = "<<flagS
+                <<", P = "<<flagP<<")";
             } else {
-                std::cout<<" -> Error: wrong register bumber"<<(int)operand;
+                std::cout<<" -> Error: wrong register\n";
             }
             break;
         case DEC_R:
             if(operand<4){
-                A=aluDEC(R[operand]);
-                std::cout<<" -> A = "<<(int)A<<" (Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<")";
+                R[operand]=aluDEC(R[operand]);
+                A=R[operand];
+                std::cout<<" -> R = "<<(int)operand<<" (Z = "
+                <<flagZ<<", C = "<<flagC<<", S = "<<flagS
+                <<", P = "<<flagP<<")";
             } else {
-                std::cout<<" -> Error: wrong register bumber"<<(int)operand;
+                std::cout<<" -> Error: wrong register\n";
             }
             break;
         case AND_R:
             if(operand<4){
                 A=aluAND(A, R[operand]);
-                std::cout<<" -> A = "<<(int)A<<" (Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<")";
+                std::cout<<" -> A = "<<(int)A<<" (Z = "
+                <<flagZ<<", C = "<<flagC<<", S = "<<flagS
+                <<", P = "<<flagP<<")";
             } else {
-                std::cout<<" -> Error: wrong register bumber"<<(int)operand;
+                std::cout<<" -> Error: wrong register\n";
             }
             break;
         case OR_R:
             if(operand<4){
                 A=aluOR(A, R[operand]);
-                std::cout<<" -> A = "<<(int)A<<" (Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<")";
+                std::cout<<" -> A = "<<(int)A<<" (Z = "
+                <<flagZ<<", C = "<<flagC<<", S = "<<flagS
+                <<", P = "<<flagP<<")";
             } else {
-                std::cout<<" -> Error: wrong register bumber"<<(int)operand;
+                std::cout<<" -> Error: wrong register\n";
             }
             break;
         case XOR_R:
             if(operand<4){
                 A=aluXOR(A, R[operand]);
-                std::cout<<" -> A = "<<(int)A<<" (Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<")";
+                std::cout<<" -> A = "<<(int)A<<" (Z = "
+                <<flagZ<<", C = "<<flagC<<", S = "<<flagS
+                <<", P = "<<flagP<<")";
             } else {
-                std::cout<<" -> Error: wrong register bumber"<<(int)operand;
+                std::cout<<" -> Error: wrong register\n";
             }
             break;
         case CMP_R:
         if(operand<4){
                 aluCMP(A, R[operand]);
-                std::cout<<" -> A = "<<(int)A<<" (Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<")";
+                std::cout<<" -> A = "<<(int)A<<" (Z = "
+                <<flagZ<<", C = "<<flagC<<", S = "<<flagS
+                <<", P = "<<flagP<<")";
             } else {
-                std::cout<<" -> Error: wrong register bumber"<<(int)operand;
+                std::cout<<" -> Error: wrong register\n";
             }
             break;
 
@@ -255,7 +269,7 @@ void CPU::step() {
             std::cout<<" -> CPU is stopped (HLT).";
             break;
         default:
-            std::cout<<" -> UNKNOWN INSTRUCTION: 0x"<<std::hex<<(int)OPcode<<std::dec;
+            std::cout<<" -> UNKNOWN instruction: 0x"<<std::hex<<(int)OPcode<<std::dec;
             running=false;
             break;
         }
@@ -273,40 +287,42 @@ void CPU::step() {
     void CPU::printState() const{ //регистры, флаги, счётчики.
         std::cout<<"--- The state of CPU. ---\n";
         std::cout<<"| A = "<<std::setw(3)<<(int)A<<"   |";
-        std::cout<<"R0 = "<<std::setw(3)<<(int)R[0];
+        std::cout<<"    R0 = "<<std::setw(3)<<(int)R[0];
         std::cout<<", R1 = "<<std::setw(3)<<(int)R[1];
         std::cout<<", R2 = "<<std::setw(3)<<(int)R[2];
-        std::cout<<", R3 = "<<std::setw(3)<<(int)R[3]<<" |\n";
+        std::cout<<", R3 = "<<std::setw(3)<<(int)R[3]<<"     |\n";
 
-        std::cout<<"| PC = "<<std::setw(4)<<PC<<"   |   SP = "<<std::setw(3)<<(int)SP<<" (stack)       |\n";
-        std::cout<<"| Flags: Z = "<<flagZ<<", C = "<<flagC<<", S = "<<flagS<<", P = "<<flagP<<"     |\n";
+        std::cout<<"| PC = "<<std::setw(4)<<PC
+        <<"   |   SP = "<<std::setw(3)<<(int)SP
+        <<" (stack)  |\n";
+        std::cout<<"| Flags: Z = "<<flagZ<<", C = "<<flagC
+        <<", S = "<<flagS<<", P = "<<flagP<<"  |\n";
         std::cout<<"--------------------------\n";
     }
     void CPU::printInstruction(uint8_t code, uint8_t operand) const{
         switch(code)
         {
-        case LDI: std::cout<<"LDI #"<<(int)operand; break;
-        case MOV_R_A: std::cout<<"MOV R"<<(int)operand<<", A"; break;
-        case MOV_A_R: std::cout<<"MOV A, R"<<(int)operand; break;
-        case STA: std::cout<<"STA "<<std::setw(4)<<(int)operand; break;
-        case LDA: std::cout<<"LDA "<<std::setw(4)<<(int)operand; break;
-        case ADD_R: std::cout<<"ADD R"<<(int)operand; break;
-        case SUB_R: std::cout<<"SUB R"<<(int)operand; break;
-        case INC_R: std::cout<<"INC R"<<(int)operand; break;
-        case DEC_R: std::cout<<"DEC R"<<(int)operand; break;
-        case AND_R: std::cout<<"AND R"<<(int)operand; break;
-        case OR_R: std::cout<<"OR R"<<(int)operand; break;
-        case XOR_R: std::cout<<"XOR R"<<(int)operand; break;
-        case CMP_R: std::cout<<"CMP R"<<(int)operand; break;
-        case JMP: std::cout<<"JMP "<<std::setw(4)<<(int)operand; break;
-        case JZ: std::cout<<"JZ "<<std::setw(4)<<(int)operand; break;
-        case JNZ: std::cout<<"JNZ "<<std::setw(4)<<(int)operand; break;
-        case JC: std::cout<<"JC "<<std::setw(4)<<(int)operand; break;
-        case JNC: std::cout<<"JNC "<<std::setw(4)<<(int)operand; break;
-        case CALL: std::cout<<"CALL "<<std::setw(4)<<(int)operand; break;
-        case RET: std::cout<<"RET (operand is ignored)"; break;
-        case HLT: std::cout<<"HLT"; break;
-        default: std::cout<<"Unknown operand"; break;
+        case LDI:       std::cout<<"LDI #"<<(int)operand; break;
+        case MOV_R_A:   std::cout<<"MOV R"<<(int)operand<<", A"; break;
+        case MOV_A_R:   std::cout<<"MOV A, R"<<(int)operand; break;
+        case STA:       std::cout<<"STA "<<std::setw(4)<<(int)operand; break;
+        case LDA:       std::cout<<"LDA "<<std::setw(4)<<(int)operand; break;
+        case ADD_R:     std::cout<<"ADD R"<<(int)operand; break;
+        case SUB_R:     std::cout<<"SUB R"<<(int)operand; break;
+        case INC_R:     std::cout<<"INC R"<<(int)operand; break;
+        case DEC_R:     std::cout<<"DEC R"<<(int)operand; break;
+        case AND_R:     std::cout<<"AND R"<<(int)operand; break;
+        case OR_R:      std::cout<<"OR R"<<(int)operand;  break;
+        case XOR_R:     std::cout<<"XOR R"<<(int)operand; break;
+        case CMP_R:     std::cout<<"CMP R"<<(int)operand; break;
+        case JMP:       std::cout<<"JMP "<<std::setw(4)<<(int)operand; break;
+        case JZ:        std::cout<<"JZ "<<std::setw(4)<<(int)operand;  break;
+        case JNZ:       std::cout<<"JNZ "<<std::setw(4)<<(int)operand; break;
+        case JC:        std::cout<<"JC "<<std::setw(4)<<(int)operand;  break;
+        case JNC:       std::cout<<"JNC "<<std::setw(4)<<(int)operand; break;
+        case CALL:      std::cout<<"CALL "<<std::setw(4)<<(int)operand; break;
+        case RET:       std::cout<<"RET (operand is ignored)"; break;
+        case HLT:       std::cout<<"HLT"; break;
+        default:        std::cout<<"UNKNOWN operand"; break;
         }
     }
-
