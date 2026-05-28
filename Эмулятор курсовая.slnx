@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="Эмулятор курсовая/Эмулятор курсовая.vcxproj" Id="528dc5ae-e869-43b0-a075-db3c94e9c0a1" />
+  <Project Path="Эмулятор курсовая/Эмулятор курсовая.vcxproj" />
 </Solution>

@@ -161,7 +161,6 @@
   <ItemGroup>
     <ClCompile Include="CPU.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="test_cpu.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CPU.h" />
